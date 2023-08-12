@@ -89,7 +89,7 @@ jobs:
         with:
           name: Built-APKs
           path: |
-            apks/*-output.apk
+            apks/*revanced*.apk
             apks/VancedMicroG.apk"
           if-no-files-found: error
 

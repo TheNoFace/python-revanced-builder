@@ -70,7 +70,7 @@ jobs:
       - name: Get Date
         id: get-date
         run: |
-          echo "date=$(TZ='Asia/Kolkata' date +"%Y.%m.%d-%H.%M.%S")" >> $GITHUB_OUTPUT
+          echo "date=$(TZ='Asia/Seoul' date +"%Y.%m.%d-%H.%M.%S")" >> $GITHUB_OUTPUT
           curl https://github.com/nikhilbadyal/docker-py-revanced/blob/changelogs/changelog.md > changelog.md
 
       - name: Delete Older Releases
@@ -82,7 +82,7 @@ jobs:
       - name: Upload Build Artifact
         uses: ncipollo/release-action@main
         with:
-          artifacts: "*-output.apk"
+          artifacts: "*revanced*.apk"
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: Build-${{ steps.get-date.outputs.date }}
           artifactErrorsFailBuild: true
