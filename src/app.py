@@ -2,6 +2,7 @@
 import concurrent
 import hashlib
 import pathlib
+import datetime as dt
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict
 
@@ -43,7 +44,8 @@ class APP(object):
 
     def get_output_file_name(self) -> str:
         """Get output file appended with version."""
-        return f"Re-{self.app_name}-{slugify(self.app_version)}-output.apk"
+        self.patch_date = dt.datetime.now().strftime("%y%m%d")
+        return f"{self.app_name}-revanced-v{self.app_version}_{self.patch_date}.apk"
 
     def set_recommended_version(self, version: str, exp: bool = False) -> None:
         """Update if cooking non-recommended."""
