@@ -42,8 +42,8 @@ jobs:
 
       - name: Update Env for custom build
         run: |
-          echo "${{ secrets.ENVS }}" >> .env
-
+          echo "${{ secrets.GH_TOKENS }}" >> .env
+          echo "${{ vars.ENVS }}" >> .env
 
       - name: Inject Reddit Client ID
         env:
