@@ -10,7 +10,7 @@ from loguru import logger
 
 from src.config import RevancedConfig
 from src.downloader.sources import apk_sources
-from src.exceptions import DownloadError, PatchingFailedError, UnknownError
+from src.exceptions import BuilderError, DownloadError, PatchingFailedError
 from src.utils import slugify
 
 
@@ -153,8 +153,9 @@ class APP(object):
             for resource_name, future in futures.items():
                 try:
                     self.resource[resource_name] = future.result()
-                except UnknownError as e:
-                    raise PatchingFailedError(e) from e
+                except BuilderError as e:
+                    msg = "Failed to download resource."
+                    raise PatchingFailedError(msg) from e
 
     @staticmethod
     def generate_filename(url: str) -> str:
