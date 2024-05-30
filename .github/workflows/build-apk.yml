@@ -126,14 +126,14 @@ jobs:
       - name: Get Date
         id: get-date
         run: |
-          echo "date=$(TZ='Asia/Seoul' date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_OUTPUT
+          echo "date=$(TZ='Asia/Seoul' date +"%Y-%m-%d")" >> $GITHUB_OUTPUT
 
       - name: Upload Build Artifact
         uses: ncipollo/release-action@main
         with:
           artifacts: "*revanced*.apk"
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: Build-${{ steps.get-date.outputs.date }}
+          tag: Build_${{ steps.get-date.outputs.date }}
           artifactErrorsFailBuild: true
 
       - name: Sleep for 10 seconds
