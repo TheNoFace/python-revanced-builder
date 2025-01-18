@@ -131,7 +131,7 @@ jobs:
       - name: Upload Build Artifact
         uses: ncipollo/release-action@main
         with:
-          artifacts: "*revanced*.apk"
+          artifacts: "apks/*revanced*.apk,updates.json,changelog.json,changelog.md"
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: Build_${{ steps.get-date.outputs.date }}
           artifactErrorsFailBuild: true

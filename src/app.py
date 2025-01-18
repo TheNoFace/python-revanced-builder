@@ -5,16 +5,14 @@ import hashlib
 import pathlib
 import datetime as dt
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from typing import Any, Self
 
 from loguru import logger
-from pytz import timezone
 
 from src.config import RevancedConfig
 from src.downloader.sources import apk_sources
 from src.exceptions import BuilderError, DownloadError, PatchingFailedError
-from src.utils import slugify, time_zone
+from src.utils import slugify
 
 
 class APP(object):
@@ -33,7 +31,6 @@ class APP(object):
         self.experiment = False
         self.cli_dl = config.env.str(f"{app_name}_CLI_DL".upper(), config.global_cli_dl)
         self.patches_dl = config.env.str(f"{app_name}_PATCHES_DL".upper(), config.global_patches_dl)
-        self.patches_json_dl = config.env.str(f"{app_name}_PATCHES_JSON_DL".upper(), config.global_patches_json_dl)
         self.exclude_request: list[str] = config.env.list(f"{app_name}_EXCLUDE_PATCH".upper(), [])
         self.include_request: list[str] = config.env.list(f"{app_name}_INCLUDE_PATCH".upper(), [])
         self.resource: dict[str, dict[str, str]] = {}
@@ -46,6 +43,7 @@ class APP(object):
         self.download_source = config.env.str(f"{app_name}_DL_SOURCE".upper(), "")
         self.package_name = package_name
         self.old_key = config.env.bool(f"{app_name}_OLD_KEY".upper(), config.global_old_key)
+        self.patches: list[dict[Any, Any]] = []
         self.space_formatted = config.env.bool(
             f"{app_name}_SPACE_FORMATTED_PATCHES".upper(),
             config.global_space_formatted,
@@ -81,7 +79,7 @@ class APP(object):
             a string that represents the output file name for an APK file.
         """
         self.patch_date = dt.datetime.now().strftime("%y%m%d")
-        return f"{self.app_name}-revanced-v{self.app_version}_{self.patch_date}.apk"
+        return f"{self.app_name}-revanced-v{slugify(self.app_version)}_{self.patch_date}.apk"
 
     def __str__(self: "APP") -> str:
         """Returns the str representation of the app."""
@@ -149,7 +147,6 @@ class APP(object):
         download_tasks = [
             ("cli", self.cli_dl, config, ".*jar"),
             ("patches", self.patches_dl, config, ".*rvp"),
-            ("patches_json", self.patches_json_dl, config, ".*"),
         ]
 
         # Using a ThreadPoolExecutor for parallelism
