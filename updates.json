@@ -1,1 +1,85 @@
-{}
+{
+    "youtube": {
+        "app_version": "20.07.39",
+        "patches_version": "v5.18.0",
+        "cli_version": "v5.0.0",
+        "ms_epoch_since_patched": 1743534851787,
+        "date_patched": "2025-04-01 19:14:11.787039+05:30",
+        "app_dump": {
+            "app_name": "youtube",
+            "app_version": "20.07.39",
+            "experiment": false,
+            "cli_dl": "https://github.com/revanced/revanced-cli/releases/latest",
+            "patches_dl": "https://github.com/revanced/revanced-patches/releases/latest",
+            "exclude_request": [
+                "playback-speed",
+                "theme",
+                "custom-branding",
+                "enable-debugging"
+            ],
+            "include_request": [],
+            "resource": {
+                "cli": {
+                    "file_name": "df5f3e56a9720b24faf3ffc148589ecdc1c8935baa61e1d00b07c8db2bd2c98d.jar",
+                    "version": "v5.0.0"
+                },
+                "patches": {
+                    "file_name": "f1caabde3d49471e9d72ac4ce8109f15c4877647648ae217d647bbc1b7f67dfb.rvp",
+                    "version": "v5.18.0"
+                }
+            },
+            "no_of_patches": 60,
+            "keystore_name": "revanced.keystore",
+            "archs_to_build": [],
+            "options_file": "options.json",
+            "download_file_name": "youtube.apk",
+            "download_dl": "https://www.apkmirror.com/wp-content/themes/APKMirror/download.php?id=8463845&key=6752572bb473b165341eecd4f0b81091fb9a2485&forcebaseapk=true",
+            "download_source": "https://www.apkmirror.com/apk/google-inc/youtube/",
+            "package_name": "com.google.android.youtube",
+            "old_key": true,
+            "patches": [],
+            "space_formatted": true,
+            "patch_date": "250401"
+        }
+    },
+    "youtube_music": {
+        "app_version": "8.05.51",
+        "patches_version": "v5.26.0",
+        "cli_version": "v5.0.1",
+        "ms_epoch_since_patched": 1749195037011,
+        "date_patched": "2025-06-06 07:30:37.011010+05:30",
+        "app_dump": {
+            "app_name": "youtube_music",
+            "app_version": "8.05.51",
+            "experiment": false,
+            "cli_dl": "https://github.com/revanced/revanced-cli/releases/latest",
+            "patches_dl": "https://github.com/revanced/revanced-patches/releases/latest",
+            "exclude_request": [],
+            "include_request": [
+                "predictive-back-gesture"
+            ],
+            "resource": {
+                "cli": {
+                    "file_name": "2d7026935af86ae1618510c333c6e98bcd084ac4312ff8fd382414464c601e7f.jar",
+                    "version": "v5.0.1"
+                },
+                "patches": {
+                    "file_name": "ce8aafdb63c79790639936fbcec757f660ba84ab6d823cc67564d0e09a9cce72.rvp",
+                    "version": "v5.26.0"
+                }
+            },
+            "no_of_patches": 10,
+            "keystore_name": "revanced.keystore",
+            "archs_to_build": [],
+            "options_file": "options.json",
+            "download_file_name": "youtube_music.apk",
+            "download_dl": "https://www.apkmirror.com/wp-content/themes/APKMirror/download.php?id=8372612&key=daf19fd922d97af26280506131dd16c5ddc033b1&forcebaseapk=true",
+            "download_source": "https://www.apkmirror.com/apk/google-inc/youtube-music/",
+            "package_name": "com.google.android.apps.youtube.music",
+            "old_key": true,
+            "patches": [],
+            "space_formatted": true,
+            "patch_date": "250606"
+        }
+    }
+}
