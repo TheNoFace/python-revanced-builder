@@ -159,6 +159,201 @@ class Parser(object):
             {},
         )
 
+    def _load_options_from_file(self: Self, file_name: str) -> list[dict[str, Any]]:
+        """Load options from a single file.
+
+        Parameters
+        ----------
+        file_name : str
+            The options file name
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of patch options from the file
+        """
+        try:
+            with self.config.temp_folder.joinpath(file_name).open() as file:
+                options: list[dict[str, Any]] = json.load(file)
+                return options
+        except FileNotFoundError as e:
+            logger.warning(str(e))
+            return []
+
+    def _merge_options(
+        self: Self,
+        global_options: list[dict[str, Any]],
+        app_options: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Merge global and app-specific options.
+
+        App-specific options override global options for the same patch name.
+
+        Parameters
+        ----------
+        global_options : list[dict[str, Any]]
+            Options from the global options file
+        app_options : list[dict[str, Any]]
+            Options from the app-specific options file
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            Merged options list
+        """
+        # Create a dict keyed by patchName for easy lookup and merging
+        merged: dict[str, dict[str, Any]] = {}
+
+        # Add global options first
+        for opt in global_options:
+            patch_name = opt.get("patchName")
+            if patch_name:
+                merged[patch_name] = opt
+
+        # Override/add with app-specific options
+        for opt in app_options:
+            patch_name = opt.get("patchName")
+            if patch_name:
+                merged[patch_name] = opt
+
+        return list(merged.values())
+
+    def _load_patch_options(self: Self, app: APP) -> list[dict[str, Any]]:
+        """Load patch options from file.
+
+        Loads global options first, then merges app-specific options on top.
+        App-specific options override global options for the same patch name.
+
+        Parameters
+        ----------
+        app : APP
+            The app instance
+
+        Returns
+        -------
+        list[dict[str, Any]]
+            List of patch options
+        """
+        # Load global options first
+        global_options = self._load_options_from_file(self.config.global_options_file)
+
+        # If app uses a different options file, load and merge it
+        if app.options_file != self.config.global_options_file:
+            logger.info(f"Loading app-specific options from {app.options_file} and merging with global options")
+            app_options = self._load_options_from_file(app.options_file)
+            return self._merge_options(global_options, app_options)
+
+        return global_options or [{}]
+
+    def _normalize_patch_name(self: Self, patch_name: str, *, space_formatted: bool) -> str:
+        """Normalize patch name based on formatting preference.
+
+        Parameters
+        ----------
+        patch_name : str
+            The original patch name
+        space_formatted : bool
+            Whether to use space formatting
+
+        Returns
+        -------
+        str
+            Normalized patch name
+        """
+        return patch_name.lower().replace(" ", "-") if space_formatted else patch_name
+
+    def _should_include_regular_patch(self: Self, patch_name: str, normalized_name: str, app: APP) -> bool:
+        """Determine if a regular patch should be included.
+
+        Parameters
+        ----------
+        patch_name : str
+            The original patch name
+        normalized_name : str
+            The normalized patch name
+        app : APP
+            The app instance
+
+        Returns
+        -------
+        bool
+            True if patch should be included
+        """
+        exclude_list = app.exclude_request
+        check_name = normalized_name if app.space_formatted else patch_name
+        return check_name not in exclude_list
+
+    def _should_include_universal_patch(self: Self, patch_name: str, normalized_name: str, app: APP) -> bool:
+        """Determine if a universal patch should be included.
+
+        Parameters
+        ----------
+        patch_name : str
+            The original patch name
+        normalized_name : str
+            The normalized patch name
+        app : APP
+            The app instance
+
+        Returns
+        -------
+        bool
+            True if patch should be included
+        """
+        include_list = app.include_request
+        check_name = normalized_name if app.space_formatted else patch_name
+        return check_name in include_list
+
+    def _process_regular_patches(
+        self: Self,
+        patches: list[dict[str, str]],
+        app: APP,
+        options_list: list[dict[str, Any]],
+    ) -> None:
+        """Process regular patches for include/exclude.
+
+        Parameters
+        ----------
+        patches : list[dict[str, str]]
+            List of regular patches
+        app : APP
+            The app instance
+        options_list : list[dict[str, Any]]
+            List of patch options
+        """
+        for patch in patches:
+            patch_name = patch["name"]
+            normalized_name = self._normalize_patch_name(patch_name, space_formatted=app.space_formatted)
+
+            if self._should_include_regular_patch(patch_name, normalized_name, app):
+                self.include(patch_name, options_list)
+            else:
+                self.exclude(patch_name)
+
+    def _process_universal_patches(
+        self: Self,
+        universal_patches: list[dict[str, str]],
+        app: APP,
+        options_list: list[dict[str, Any]],
+    ) -> None:
+        """Process universal patches for include.
+
+        Parameters
+        ----------
+        universal_patches : list[dict[str, str]]
+            List of universal patches
+        app : APP
+            The app instance
+        options_list : list[dict[str, Any]]
+            List of patch options
+        """
+        for patch in universal_patches:
+            patch_name = patch["name"]
+            normalized_name = self._normalize_patch_name(patch_name, space_formatted=app.space_formatted)
+
+            if self._should_include_universal_patch(patch_name, normalized_name, app):
+                self.include(patch_name, options_list)
+
     def include_exclude_patch(
         self: Self,
         app: APP,
@@ -166,46 +361,10 @@ class Parser(object):
         patches_dict: dict[str, list[dict[str, str]]],
     ) -> None:
         """The function `include_exclude_patch` includes and excludes patches for a given app."""
-        options_list: list[dict[str, Any]] = [{}]
-        try:
-            with self.config.temp_folder.joinpath(app.options_file).open() as file:
-                options_list = json.load(file)
-        # Not excepting on JSONDecodeError as it should error out if the file is not a valid JSON
-        except FileNotFoundError as e:
-            logger.warning(str(e))
-            logger.debug("Setting options to empty list.")
+        options_list = self._load_patch_options(app)
 
-        if app.space_formatted:
-            for patch in patches:
-                normalized_patch = patch["name"].lower().replace(" ", "-")
-                (
-                    self.include(patch["name"], options_list)
-                    if normalized_patch not in app.exclude_request
-                    else self.exclude(
-                        patch["name"],
-                    )
-                )
-            for patch in patches_dict["universal_patch"]:
-                normalized_patch = patch["name"].lower().replace(" ", "-")
-                (
-                    self.include(
-                        patch["name"],
-                        options_list,
-                    )
-                    if normalized_patch in app.include_request
-                    else ()
-                )
-        else:
-            for patch in patches:
-                (
-                    self.include(patch["name"], options_list)
-                    if patch["name"] not in app.exclude_request
-                    else self.exclude(
-                        patch["name"],
-                    )
-                )
-            for patch in patches_dict["universal_patch"]:
-                self.include(patch["name"], options_list) if patch["name"] in app.include_request else ()
+        self._process_regular_patches(patches, app, options_list)
+        self._process_universal_patches(patches_dict["universal_patch"], app, options_list)
 
     def _build_base_args(self: Self, app: APP) -> list[str]:
         """Build base arguments for ReVanced CLI."""
