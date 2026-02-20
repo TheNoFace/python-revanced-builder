@@ -161,7 +161,7 @@ jobs:
             changelog.json
             updates.json
             apks/*-revanced-v*.apk
-            apks/VancedMicroG.apk"
+            apks/app.revanced.android.gms-*.apk"
           if-no-files-found: error
 
       - name: Commit Update file

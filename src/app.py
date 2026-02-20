@@ -135,10 +135,10 @@ class APP(object):
             a string that represents the output file name for an APK file.
         """
         current_date = datetime.now(ZoneInfo(time_zone))
-        formatted_date = current_date.strftime("%Y%b%d.%I%M%p").upper()
+        formatted_date = current_date.strftime("%y%m%d")
         return (
             f"{self.app_name}-revanced-v{slugify(self.app_version)}"
-            f"-{slugify(self.patch_bundles[0]["version"])}-{formatted_date}.apk"
+            f"-{slugify(self.patch_bundles[0]["version"]).replace('v', 'p')}-{formatted_date}.apk"
         )
 
     def get_patch_bundles_versions(self: Self) -> list[str]:
