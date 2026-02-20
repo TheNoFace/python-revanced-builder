@@ -172,7 +172,7 @@ jobs:
         id: ff
         run: |
           apk_list=""
-          for filename in $(find . -name "*-output.apk" -type f); do
+          for filename in $(find . -name "*-revanced-v*.apk" -type f); do
             apk_list="$apk_list,$filename"
           done
           apk_list=${apk_list:1}
