@@ -15,7 +15,7 @@ from loguru import logger
 from src.config import RevancedConfig
 from src.downloader.sources import APKEEP, apk_sources
 from src.exceptions import BuilderError, DownloadError, PatchingFailedError
-from src.utils import slugify
+from src.utils import slugify, time_zone
 
 
 class APP(object):
