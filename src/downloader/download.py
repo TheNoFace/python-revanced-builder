@@ -149,7 +149,7 @@ class Downloader(object):
             for extra in config.extra_download_files:
                 url, file_name = extra.split("@")
                 file_name_without_extension, file_extension = os.path.splitext(file_name)
-                new_file_name = f"{file_name_without_extension}-output{file_extension}"
+                new_file_name = f"{file_name_without_extension}{file_extension}"
                 APP.download(
                     url,
                     config,

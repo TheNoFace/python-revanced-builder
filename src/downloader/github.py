@@ -40,7 +40,7 @@ class Github(Downloader):
             headers["Authorization"] = f"Bearer {self.config.personal_access_token}"
         response = requests.get(repo_url, headers=headers, timeout=request_timeout)
         handle_request_response(response, repo_url)
-        if repo_name == "revanced-patches":
+        if repo_name in ["revanced-patches", "GmsCore"] :
             download_url = response.json()["assets"][1]["browser_download_url"]
         else:
             download_url = response.json()["assets"][0]["browser_download_url"]
