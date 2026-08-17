@@ -85,7 +85,7 @@ You can use any of the following methods to build.
 
 - 🫠Without Docker
 
-    1. Install Java >= 17
+    1. Install Java >= 21
     2. Install Python >= 3.11
     3. Create virtual environment
        ```
@@ -112,10 +112,10 @@ You can use any of the following methods to build.
 |:---------------------------------------------------------|:-------------------------------------------------------:|:----------------------------------------------------------------------------------------------------------------------|
 | [PATCH_APPS](#patch-apps)                                |                   Apps to patch/build                   | youtube                                                                                                               |
 | [EXISTING_DOWNLOADED_APKS ](#existing-downloaded-apks)   |              Already downloaded clean apks              | []                                                                                                                    |
-| [PERSONAL_ACCESS_TOKEN](#personal-access-token)          |                 Github Token to be used                 | None                                                                                                                  |
+| [PERSONAL_ACCESS_TOKEN](#personal-access-token)          |             GitHub/GitLab Token to be used              | None                                                                                                                  |
 | DRY_RUN                                                  |                      Do a dry run                       | False                                                                                                                 |
 | [~~GLOBAL_CLI_DL*~~](#global-resources)                  | DL for CLI to be used for patching apps.(Disabled Temp) | [Revanced CLI](https://github.com/revanced/revanced-cli)                                                              |
-| [GLOBAL_PATCHES_DL*](#global-resources)                  |      DL for Patches to be used for patching apps.       | [Revanced Patches](https://github.com/revanced/revanced-patches)                                                      |
+| [GLOBAL_PATCHES_DL*](#global-resources)                  |      DL for Patches to be used for patching apps.       | [ReVanced API patches bundle](https://api.revanced.app/v5/patches.rvp)                                                |
 | [GLOBAL_SPACE_FORMATTED_PATCHES*](#global-resources)     |          Whether patches are space formatted.           | True                                                                                                                  |
 | [GLOBAL_KEYSTORE_FILE_NAME*](#global-keystore-file-name) |          Key file to be used for signing apps           | [Builder's own key](https://github.com/nikhilbadyal/docker-py-revanced/blob/main/apks/revanced.keystore)              |
 | [GLOBAL_OLD_KEY*](#global-keystore-file-name)            |    Whether key was generated with cli v4(new) or not    | <br/>[Builder's v3(old) own key](https://github.com/nikhilbadyal/docker-py-revanced/blob/main/apks/revanced.keystore) |
@@ -124,6 +124,7 @@ You can use any of the following methods to build.
 | [GLOBAL_CLI_ARGSF*](#cli-arg-compatibility)              |      CLI argument profile (`revanced-cli` default)      | revanced-cli                                                                                                          |
 | [GLOBAL_CLI_LPARGS*](#cli-arg-compatibility)             |      Override map for `list-patches` command args       | None                                                                                                                  |
 | [GLOBAL_CLI_PARGS*](#cli-arg-compatibility)              |          Override map for `patch` command args          | None                                                                                                                  |
+| CLI_TEMP_FOLDER_NAME                                     |     Parent folder for per-app CLI temporary files       | patch-source-temporary-files                                                                                          |
 | REDDIT_CLIENT_ID                                         |          Reddit Client ID to patch reddit apps          | None                                                                                                                  |
 | [TELEGRAM_CHAT_ID](#telegram-support)                    |               Receiver in Telegram upload               | None                                                                                                                  |
 | [TELEGRAM_BOT_TOKEN](#telegram-support)                  |             APKs Sender for Telegram upload             | None                                                                                                                  |
@@ -162,6 +163,20 @@ You can use any of the following methods to build.
 `**` - Can be used to included universal patch.<br>
 `***` - Can be used for unavailable apps in the repository (unofficial apps).
 
+### Obtainium
+
+Optional integration with [Obtainium](https://github.com/ImranR98/Obtainium) so patched APKs can be installed and
+updated straight from your GitHub Releases. See [obtainium.md](obtainium.md) for setup steps, how it works, and
+full option details.
+
+| **Env Name**                                                                     |                       **Description**                        | **Default** |
+|:----------------------------------------------------------------------------------|:--------------------------------------------------------------:|:-------------|
+| [OBTAINIUM_EXPORT](obtainium.md#obtainium_export)                                 |            Generate per-app HTML sources for Obtainium         | False        |
+| [OBTAINIUM_GITHUB_TAG](obtainium.md#obtainium_github_tag)                         |         Release tag the generated links point to               | latest       |
+| [OBTAINIUM_SITE_EXPORT](obtainium.md#obtainium_site_export)                       |    Generate a one-click install site (`index.html` at branch root) | False  |
+| [OBTAINIUM_VERSION_EXTRACTION_REGEX](obtainium.md#obtainium_version_extraction_regex) | Regex used to extract app + patch version for display     | See docs     |
+| [OBTAINIUM_VERSION_MATCH_GROUP](obtainium.md#obtainium_version_match_group)       |         Match-group template used with the regex above         | `$1+$2`      |
+
 ## Note
 
 1. <a id="any-patch-apps"></a>**Officially** Supported values for **APP_NAME**** are :
@@ -178,11 +193,10 @@ You can use any of the following methods to build.
     - [icon_pack_studio](https://www.apkmirror.com/apk/smart-launcher-team/icon-pack-studio/)
     - [ticktick](https://www.apkmirror.com/apk/appest-inc/ticktick-to-do-list-with-reminder-day-planner/)
     - [twitch](https://www.apkmirror.com/apk/twitch-interactive-inc/twitch/)
-    - [hex-editor](https://m.apkpure.com/hex-editor/com.myprog.hexedit)
     - [windy](https://www.apkmirror.com/apk/windy-weather-world-inc/windy-wind-weather-forecast/)
     - [my-expenses](https://my-expenses.en.uptodown.com/android)
     - [backdrops](https://backdrops.en.uptodown.com/android)
-    - [expensemanager](https://apksos.com/app/com.ithebk.expensemanager)
+    - [expensemanager](https://bishinews-expense-manager.en.uptodown.com/android)
     - [tasker](https://www.apkmirror.com/apk/joaomgcd/tasker-crafty-apps-eu/)
     - [irplus](https://irplus.en.uptodown.com/android)
     - [vsco](https://www.apkmirror.com/apk/vsco/vsco-cam/)
@@ -196,7 +210,6 @@ You can use any of the following methods to build.
     - [trakt](https://www.apkmirror.com/apk/trakt/trakt/)
     - [candyvpn](https://www.apkmirror.com/apk/liondev-io/candylink-vpn/)
     - [sonyheadphone](https://www.apkmirror.com/apk/sony-corporation/sony-headphones-connect/)
-    - [androidtwelvewidgets](https://m.apkpure.com/android--widgets-twelve/com.dci.dev.androidtwelvewidgets)
     - [yuka](https://yuka.en.uptodown.com/android)
     - [relay](https://www.apkmirror.com/apk/dbrady/relay-for-reddit-/)
     - [boost](https://www.apkmirror.com/apk/ruben-mayayo/boost-for-reddit/)
@@ -212,14 +225,9 @@ You can use any of the following methods to build.
     - [lightroom](https://www.apkmirror.com/apk/adobe/lightroom/)
     - [duolingo](https://www.apkmirror.com/apk/duolingo/duolingo-duolingo/)
     - [musically](https://www.apkmirror.com/apk/tiktok-pte-ltd/tik-tok-including-musical-ly/)
-    - [photomath](https://www.apkmonk.com/app/com.microblink.photomath/)
-    - [joey](https://www.apkmonk.com/app/o.o.joey/)
+    - [joey](https://joey-for-reddit.en.uptodown.com/android)
     - [vanced](https://www.apkmirror.com/apk/team-vanced/youtube-vanced/)
-    - [spotify-lite](https://www.apkmonk.com/app/com.spotify.lite/)
-    - [digitales](https://www.apkmonk.com/app/at.gv.oe.app/)
-    - [scbeasy](https://www.apkmonk.com/app/com.scb.phone/)
-    - [reddit-news](https://m.apkpure.com/relay-for-reddit/reddit.news)
-    - [finanz-online](https://apksos.com/app/at.gv.bmf.bmf2go)
+    - [scbeasy](https://scb-easy.en.uptodown.com/android)
     - [tumblr](https://www.apkmirror.com/apk/tumblr-inc/tumblr/)
     - [fitnesspal](https://www.apkmirror.com/apk/myfitnesspal-inc/calorie-counter-myfitnesspal/)
     - [facebook](https://www.apkmirror.com/apk/facebook-2/facebook/)
@@ -241,6 +249,21 @@ You can use any of the following methods to build.
     - [cieid](https://www.apkmirror.com/apk/istituto-poligrafico-e-zecca-dello-stato-s-p-a/cieid/)
     - [infinity-for-reddit-patreon](https://www.apkmirror.com/apk/docile-alligator/infinity-for-reddit-patreon-github-version/)
     - [infinity-for-reddit-plus](https://www.apkmirror.com/apk/docile-alligator/infinity-for-reddit-plus/)
+    - [gmx](https://www.apkmirror.com/apk/gmx/gmx-mail/)
+    - [proton-vpn](https://www.apkmirror.com/apk/proton-technologies-ag/protonvpn-secure-and-free-vpn/)
+    - [adobe-photoshop-mix](https://www.apkmirror.com/apk/adobe/photoshop-mix/)
+    - [disney-plus-fire-tv-android-tv](https://www.apkmirror.com/apk/disney/disney-fire-tv/)
+    - [kleinanzeigen](https://www.apkmirror.com/apk/kleinanzeigen-de-gmbh/ebay-kleinanzeigen-for-germany/)
+    - [letterboxd](https://www.apkmirror.com/apk/letterboxd-limited/letterboxd/)
+    - [microsoft-lens](https://www.apkmirror.com/apk/microsoft-corporation/office-lens/)
+    - [fotmob](https://www.apkmirror.com/apk/fotmob-as/fotmob-live-soccer-scores/)
+    - [nothing-x](https://www.apkmirror.com/apk/nothing-technology-limited/ear-1/)
+    - [peacock-tv](https://www.apkmirror.com/apk/peacock-tv-llc/peacock-tv/)
+    - [sbs-on-demand-android-tv](https://www.apkmirror.com/apk/sbs-corporation-2/sbs-on-demand-android-tv/)
+    - [samsung-radio](https://www.apkmirror.com/apk/samsung-electronics-co-ltd/samsung-radio/)
+    - [rakuten-viber-messenger](https://www.apkmirror.com/apk/viber-media-s-a-r-l/viber/)
+    - [id-austria](https://www.apkmirror.com/apk/spra-source-pin-register-authority/digitales-amt/)
+    - [photomath](https://www.apkmirror.com/apk/google-inc/photomath/)
 
     <br>`**` - You can also patch any other app which is **not** supported officially.To do so, you need to provide
    few more inputs to the tool which are mentioned below. These config will override the sources config from the tool.
@@ -256,16 +279,7 @@ You can use any of the following methods to build.
    2. UPTODOWN - Supports downloading any available version
         1. Link Format - https://<app-name>.en.uptodown.com/android
         2. Example Link - https://spotify.en.uptodown.com/android
-   3. APKSOS - Supports downloading any available version
-       1. Link Format - https://apksos.com/download-app/<package-name>
-       2. Example Link - https://apksos.com/download-app/com.expensemanager
-   4. APKPURE - Supports downloading any available version
-       1. Link Format - https://apkpure.net/-/<package-name>
-       2. Example Link - https://apkpure.net/-/com.google.android.youtube
-   5. APKMonk - Supports downloading any available version
-       1. Link Format - https://www.apkmonk.com/app/<package-name>/
-       2. Example Link - https://www.apkmonk.com/app/<package-name>/
-   6. APKEEP - Support downloading using [APKEEP](https://github.com/EFForg/apkeep)
+   3. APKEEP - Support downloading using [APKEEP](https://github.com/EFForg/apkeep)
       1. Link Format - apkeep
       2. Example Link - apkeep
       Note - You need to provide APKEEP_EMAIL and APKEEP_TOKEN in the **DOCKER_PY_REVANCED_SECRETS** Github Secrets.
@@ -299,17 +313,27 @@ You can use any of the following methods to build.
    ```
    If you add above. Script will not download the `youtube` & `youtube_music`apk from internet and expects an apk in
    `/apks` folder with **same** name.
-6. <a id="personal-access-token"></a>If you run script again & again. You might hit GitHub API limit. In that case
-   you can provide your Personal GitHub Access Token in `.env` file or in `ENVS` in `GitHub secrets` (Recommended)
+6. <a id="personal-access-token"></a>If you run script again & again. You might hit GitHub/GitLab API limits.
+   In that case you can provide your Personal Access Token in `.env` file or in `ENVS` in `GitHub secrets` (Recommended)
    in the format -
    ```dotenv
     PERSONAL_ACCESS_TOKEN=<PAT>
    ```
+   Alternatively, you can add a dedicated `PERSONAL_ACCESS_TOKEN` secret to the repo (`Settings` ->
+   `Secrets and variables` -> `Actions`) instead of embedding it in `ENVS`. It's used automatically unless
+   `ENVS` already sets `PERSONAL_ACCESS_TOKEN` to a non-empty value, in which case `ENVS` takes priority.
 7. <a id="global-resources"></a>You can provide Direct download to the resource to used for patching apps `.env` file
    or in `ENVS` in `GitHub secrets` (Recommended) in the format -
    ```dotenv
     GLOBAL_CLI_DL=https://github.com/revanced/revanced-cli
-    GLOBAL_PATCHES_DL=https://github.com/revanced/revanced-patches
+    GLOBAL_PATCHES_DL=https://api.revanced.app/v5/patches.rvp
+   ```
+   The ReVanced API `.rvp` endpoint is the default patches source because it provides the binary patch bundle directly.
+   GitLab release URLs are also supported for resources. The tool resolves the latest release through GitLab's
+   release API and filters release links/sources with the same asset extension regex used for GitHub.
+   ```dotenv
+    GLOBAL_CLI_DL=https://gitlab.com/example/revanced-cli
+    GLOBAL_PATCHES_DL=https://gitlab.com/example/revanced-patches/-/releases/permalink/latest
    ```
    Resources downloaded from envs and will be used for patching for any **APP_NAME**.
    Unless provided different resource for the individual app.<br><br>
@@ -327,19 +351,21 @@ You can use any of the following methods to build.
       **Multi-Patching Support**: You can now use multiple patch bundles from different creators for the same app:
    ```dotenv
     # Comma-separated URLs
-    YOUTUBE_PATCHES_DL=https://github.com/ReVanced/revanced-patches,https://github.com/indrastorm/Dropped-patches
+    YOUTUBE_PATCHES_DL=https://gitlab.com/revanced/revanced-patches,https://github.com/indrastorm/Dropped-patches
    ```
    The tool will download all specified patch bundles and apply them together using the ReVanced CLI's multiple `-p` argument support.<br>
    If you have want to provide resource locally in the apks folder. You can specify that by mentioning filename
    prefixed with `local://`.<br>
-   _Note_ - The link provided must be DLs. Unless they are from GitHub.<br>
-   _Note_ - If your patches resource are available on GitHub and you want to select latest resource without excluding
-    pre-release you can add `latest-prerelease` to the URL.
+   _Note_ - The link provided must be DLs. Unless they are from GitHub or GitLab.<br>
+   _Note_ - If your patches resource are available on GitHub/GitLab and you want to select latest resource without
+    excluding pre-release you can add `latest-prerelease` to the URL.
     Example:
    ```dotenv
     YOUTUBE_PATCHES_DL=https://github.com/inotia00/revanced-patches/releases/latest-prerelease
    ```
    For above example tool while selecting latest patches will consider pre-releases/beta too.
+   For GitLab, `latest-prerelease` maps to GitLab's latest release because GitLab releases do not expose a separate
+   pre-release flag in the release API.
     ```dotenv
     YOUTUBE_PATCHES_DL=https://github.com/inotia00/revanced-patches/releases/latest
    ```
@@ -349,33 +375,37 @@ You can use any of the following methods to build.
    Space formatted patches. Use `SPACE_FORMATTED_PATCHES` to define the type of patches.
 
 7a. <a id="cli-arg-compatibility"></a>CLI argument compatibility profiles and overrides:
-   This builder now supports multiple CLI syntax families and key-value override maps.
-   ```dotenv
-    # Default profile (recommended today)
-    GLOBAL_CLI_ARGSF=revanced-cli
-   ```
-   Built-in profile values:
-   - `revanced-cli` (default, v5-style list-patches positional patch files)
-   - `revanced-cli-v6` (v6-style list-patches requires `-p/--patches`)
-   - `morphe-cli` (morphe-style list-patches requires `--patches`)
+    This builder now supports multiple CLI syntax families and key-value override maps.
+    ```dotenv
+     # Default profile (recommended today)
+     GLOBAL_CLI_ARGSF=revanced-cli
+    ```
+    Built-in profile values:
+    - `revanced-cli` (default, current flag-based ReVanced CLI format)
+    - `morphe-cli` (morphe-style list-patches requires `--patches`)
 
-   Override maps use unordered `KEY=value` pairs in a single string:
-   ```dotenv
-    GLOBAL_CLI_LPARGS="CMD=list-patches INDEX=-i PACKAGES=-p UNIVERSAL=-u VERSIONS=-v OPTIONS=-o PATCHES=__POSITIONAL__ PATCHES_POST="
-    GLOBAL_CLI_PARGS="CMD=patch PATCHES=-p PATCHES_POST= ENABLED=-e DISABLED=-d OPTIONS=-O PURGE=--purge KEYSTORE=--keystore KEYSTORE_ENTRY_ALIAS=--keystore-entry-alias=alias KEYSTORE_ENTRY_PASSWORD=--keystore-entry-password=ReVanced KEYSTORE_PASSWORD=--keystore-password=ReVanced EXCLUSIVE=--exclusive APK=__POSITIONAL__ OUTPUT=-o FORCE=--force RIP_LIB=--rip-lib"
-   ```
-   `PATCHES_POST` is an optional companion argument appended after every patch bundle (used by ReVanced v6 with `-b`).
-   App-level overrides are also supported and take precedence:
-   ```dotenv
-    YOUTUBE_CLI_ARGSF=morphe-cli
-    YOUTUBE_CLI_LPARGS="PATCHES=--patches"
-    YOUTUBE_CLI_PARGS="PATCHES=-p STRIPLIBS=--striplibs"
-   ```
+    Override maps use unordered `KEY=value` pairs in a single string:
+    ```dotenv
+     GLOBAL_CLI_LPARGS="CMD=list-patches INDEX=-i PACKAGES=-p UNIVERSAL=-u VERSIONS=-v OPTIONS=-o PATCHES=__POSITIONAL__ PATCHES_POST= TEMPORARY_FILES_PATH="
+     GLOBAL_CLI_PARGS="CMD=patch PATCHES=-p PATCHES_POST= ENABLED=-e DISABLED=-d OPTIONS=-O PURGE=--purge KEYSTORE=--keystore KEYSTORE_ENTRY_ALIAS=--keystore-entry-alias=alias KEYSTORE_ENTRY_PASSWORD=--keystore-entry-password=ReVanced KEYSTORE_PASSWORD=--keystore-password=ReVanced EXCLUSIVE=--exclusive APK=__POSITIONAL__ OUTPUT=-o FORCE=--force RIP_LIB=--rip-lib TEMPORARY_FILES_PATH=-t"
+    ```
+    `PATCHES_POST` is an optional companion argument appended after every patch bundle (used by ReVanced v6 with `-b`).
+    `TEMPORARY_FILES_PATH` is a dynamic argument; when a CLI profile sets it, the builder passes
+    `<apks>/<CLI_TEMP_FOLDER_NAME>/<patch-source-app-name>` so parallel patchers do not share purge-sensitive temp files.
+    ReVanced and Morphe patch commands expose `-t`; Morphe list-patches also exposes `-t`, while ReVanced list-patches does not.
+    `CONTINUE_ON_ERROR` is an optional patch flag; the built-in `morphe-cli` profile enables `--continue-on-error`
+    because Morphe can skip one failed patch while still producing the app.
+    App-level overrides are also supported and take precedence:
+    ```dotenv
+     YOUTUBE_CLI_ARGSF=morphe-cli
+     YOUTUBE_CLI_LPARGS="PATCHES=--patches TEMPORARY_FILES_PATH=-t"
+     YOUTUBE_CLI_PARGS="PATCHES=-p STRIPLIBS=--striplibs TEMPORARY_FILES_PATH=-t"
+    ```
 
-   Example migration to ReVanced v6 syntax:
-   ```dotenv
-    GLOBAL_CLI_ARGSF=revanced-cli-v6
-   ```
+    Example configuration for the standard ReVanced CLI:
+    ```dotenv
+     GLOBAL_CLI_ARGSF=revanced-cli
+    ```
 
 8. <a id="global-keystore-file-name"></a>If you don't want to use default keystore. You can provide your own by
    placing it inside `apks` folder. And adding the name of `keystore-file` in `.env` file or in `ENVS` in `GitHub
@@ -446,11 +476,17 @@ You can use any of the following methods to build.
 11. <a id="extra-files"></a>If you want to include any extra file to the Github upload. Set comma arguments
      in `.env` file or in `ENVS` in `GitHub secrets` (Recommended) in the format
     ```ini
+    # Exact filename match
     EXTRA_FILES=<url>@<appName>.apk
+
+    # Regex pattern match for dynamic/versioned asset names
+    EXTRA_FILES=<url>@/<regex-pattern>/
     ```
     Example:
     ```dotenv
      EXTRA_FILES=https://github.com/inotia00/mMicroG/releases/latest@mmicrog.apk
+     # Regex example matching versioned MicroG filenames:
+     EXTRA_FILES=https://github.com/microg/GmsCore/releases/latest@/com\.google\.android\.gms-\d+\.apk$/
     ```
 12. <a id="custom-exclude-patching"></a>If you want to exclude any patch. Set comma separated patch in `.env` file
     or in `ENVS` in `GitHub secrets` (Recommended) in the format
@@ -497,7 +533,7 @@ You can use any of the following methods to build.
     ```
     Example:
     ```ini
-    YOUTUBE_DL=https://d.apkpure.com/b/APK/com.google.android.youtube?version=latest
+    YOUTUBE_DL=https://example.com/youtube.apk
     ```
 16. <a id="telegram-support"></a>For Telegram Upload.
      1. Set up a telegram channel, send a message to it and forward the message to

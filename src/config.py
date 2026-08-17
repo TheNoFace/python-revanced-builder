@@ -38,6 +38,18 @@ class RevancedConfig(object):
         self.global_cli_lpargs = env.str("GLOBAL_CLI_LPARGS", "")
         # This env allows global overrides for `patch` key-value argument map.
         self.global_cli_pargs = env.str("GLOBAL_CLI_PARGS", "")
+        # CLI temp paths stay under the mounted artifact folder so parallel patchers keep isolated work directories.
+        self.cli_temp_folder_name = env.str("CLI_TEMP_FOLDER_NAME", "patch-source-temporary-files")
         self.max_resource_workers = env.int("MAX_RESOURCE_WORKERS", 3)
         self.max_parallel_apps = env.int("MAX_PARALLEL_APPS", 4)
         self.disable_caching = env.bool("DISABLE_CACHING", False)
+        self.obtainium_export = env.bool("OBTAINIUM_EXPORT", False)
+        self.obtainium_github_tag = env.str("OBTAINIUM_GITHUB_TAG", "latest")
+        self.obtainium_site_export = env.bool("OBTAINIUM_SITE_EXPORT", False)
+        # Matches this project's own output filename convention (see APP.get_output_file_name),
+        # so version + patch bundle version resolve correctly without extra configuration.
+        self.obtainium_version_extraction_regex = env.str(
+            "OBTAINIUM_VERSION_EXTRACTION_REGEX",
+            r"Version([\w.]+)-PatchVersion[v]?([\w.]+)-PatchSet",
+        )
+        self.obtainium_version_match_group = env.str("OBTAINIUM_VERSION_MATCH_GROUP", "$1+$2")

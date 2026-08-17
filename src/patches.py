@@ -1,9 +1,11 @@
 """Revanced Patches."""
 
 import contextlib
+import re
 from typing import Any, ClassVar, Self
 
 from loguru import logger
+from packaging.version import InvalidVersion, Version
 
 from src.app import APP
 from src.config import RevancedConfig
@@ -26,7 +28,6 @@ class Patches(object):
         "ginlemon.iconpackstudio": "icon_pack_studio",
         "com.ticktick.task": "ticktick",
         "tv.twitch.android.app": "twitch",
-        "com.myprog.hexedit": "hex-editor",
         "co.windyapp.android": "windy",
         "org.totschnig.myexpenses": "my-expenses",
         "com.backdrops.wallpapers": "backdrops",
@@ -46,7 +47,6 @@ class Patches(object):
         "tv.trakt.trakt": "trakt",
         "com.candylink.openvpn": "candyvpn",
         "com.sony.songpal.mdr": "sonyheadphone",
-        "com.dci.dev.androidtwelvewidgets": "androidtwelvewidgets",
         "io.yuka.android": "yuka",
         "free.reddit.news": "relay",
         "com.rubenmayayo.reddit": "boost",
@@ -60,14 +60,9 @@ class Patches(object):
         "com.mgoogle.android.gms": "microg",
         "jp.pxv.android": "pixiv",
         "com.strava": "strava",
-        "com.microblink.photomath": "photomath",
         "o.o.joey": "joey",
         "com.vanced.android.youtube": "vanced",
-        "com.spotify.lite": "spotify-lite",
-        "at.gv.oe.app": "digitales",
         "com.scb.phone": "scbeasy",
-        "reddit.news": "reddit-news",
-        "at.gv.bmf.bmf2go": "finanz-online",
         "com.tumblr": "tumblr",
         "com.myfitnesspal.android": "fitnesspal",
         "com.facebook.katana": "facebook",
@@ -91,6 +86,21 @@ class Patches(object):
         "it.ipzs.cieid": "cieid",
         "ml.docilealligator.infinityforreddit.patreon": "infinity-for-reddit-patreon",
         "ml.docilealligator.infinityforreddit.plus": "infinity-for-reddit-plus",
+        "de.gmx.mobile.android.mail": "gmx",
+        "ch.protonvpn.android": "proton-vpn",
+        "com.adobe.photoshopmix": "adobe-photoshop-mix",
+        "com.disney.disneyplus": "disney-plus-fire-tv-android-tv",
+        "com.ebay.kleinanzeigen": "kleinanzeigen",
+        "com.letterboxd.letterboxd": "letterboxd",
+        "com.microsoft.office.officelens": "microsoft-lens",
+        "com.mobilefootie.wc2010": "fotmob",
+        "com.nothing.smartcenter": "nothing-x",
+        "com.peacocktv.peacockandroid": "peacock-tv",
+        "com.sbs.ondemand.tv": "sbs-on-demand-android-tv",
+        "com.sec.android.app.fm": "samsung-radio",
+        "com.viber.voip": "rakuten-viber-messenger",
+        "at.gv.oe.app": "id-austria",
+        "com.microblink.photomath": "photomath",
     }
 
     @staticmethod
@@ -142,6 +152,7 @@ class Patches(object):
                     f"{config.temp_folder}/{app.resource["cli"]["file_name"]}",
                     f"{config.temp_folder}/{bundle["file_name"]}",
                     app.cli_lp_args,
+                    app.get_cli_temporary_files_path(config),
                 )
                 self._process_patches(patches, app)
         elif "patches" in app.resource:
@@ -150,6 +161,7 @@ class Patches(object):
                 f"{config.temp_folder}/{app.resource["cli"]["file_name"]}",
                 f"{config.temp_folder}/{app.resource["patches"]["file_name"]}",
                 app.cli_lp_args,
+                app.get_cli_temporary_files_path(config),
             )
             self._process_patches(patches, app)
 
@@ -181,13 +193,51 @@ class Patches(object):
         patch_dict["app"] = app_name
 
         if isinstance(version, list) and version:
-            patch_dict["version"] = version[-1]
+            patch_dict["version"] = self.select_recommended_version(version)
         elif version:
             patch_dict["version"] = version
         else:
             patch_dict["version"] = "all"
 
         return patch_dict
+
+    @staticmethod
+    def _coerce_nonstandard_version(candidate: str) -> Version | None:
+        """Convert suffix-heavy app versions into a comparable numeric version when possible."""
+        numeric_parts = re.findall(r"\d+", candidate)
+        if not numeric_parts:
+            # Versions without numeric groups cannot be ordered safely, so callers should keep the existing fallback.
+            return None
+        try:
+            # Piko can publish versions such as `11.95.1-release-ripped.0`; numeric groups preserve app ordering.
+            return Version(".".join(numeric_parts))
+        except InvalidVersion:
+            # The normalized numeric form should be valid, but preserving the old fallback keeps parsing resilient.
+            return None
+
+    @staticmethod
+    def select_recommended_version(versions: list[str]) -> str:
+        """Choose the newest compatible version from the CLI-provided version list."""
+        valid_versions: list[tuple[Version, str]] = []
+
+        for candidate in versions:
+            try:
+                # The CLI often returns newest-to-oldest, but sorting avoids relying on source ordering.
+                valid_versions.append((Version(candidate), candidate))
+            except InvalidVersion:
+                if coerced_version := Patches._coerce_nonstandard_version(candidate):
+                    # Numeric coercion joins the same comparison pool so mixed beta/release-ripped lists sort together.
+                    valid_versions.append((coerced_version, candidate))
+                else:
+                    # Non-standard app versions should not crash patch listing; fallback below preserves CLI order.
+                    logger.warning(f"Unable to parse compatible app version `{candidate}`.")
+
+        if valid_versions:
+            # The original string is returned so downstream download sources receive the exact advertised value.
+            return max(valid_versions, key=lambda item: item[0])[1]
+
+        # If every version is unorderable, keep the first advertised version rather than silently picking oldest.
+        return versions[0]
 
     def _is_duplicate_patch(self: Self, patch_name: str, app_name: str) -> bool:
         """Check if patch already exists to avoid duplicates.

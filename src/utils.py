@@ -1,5 +1,6 @@
 """Utilities."""
 
+import html
 import inspect
 import json
 import re
@@ -11,6 +12,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import cloudscraper
@@ -21,6 +23,7 @@ from requests import Response, Session
 
 if TYPE_CHECKING:
     from src.app import APP
+    from src.config import RevancedConfig
 
 from src.downloader.sources import APK_MIRROR_APK_CHECK
 from src.exceptions import ScrapingError
@@ -30,15 +33,20 @@ default_build = [
     "youtube_music",
 ]
 possible_archs = ["armeabi-v7a", "x86", "x86_64", "arm64-v8a"]
+# Set Java 21 as the minimum required major version for running ReVanced patching toolchain.
+minimum_java_major_version = 21
+# Use a syntactically valid desktop Chrome identity because APKMirror and artifact hosts may reject impossible browsers.
 request_header = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (HTML, like Gecko)"
+    "AppleWebKit/537.36 (KHTML, like Gecko)"
     " Chrome/96.0.4664.93 Safari/537.36",
     "Authorization": "Basic YXBpLWFwa3VwZGF0ZXI6cm01cmNmcnVVakt5MDRzTXB5TVBKWFc4",
     "Content-Type": "application/json",
 }
 default_cli = "https://github.com/revanced/revanced-cli/releases/latest"
-default_patches = "https://github.com/revanced/revanced-patches/releases/latest"
+# Prefer ReVanced's API-hosted patch bundle because it exposes the `.rvp` file directly without relying on
+# release pages whose asset metadata may be unavailable or may only contain source archives.
+default_patches = "https://api.revanced.app/v5/patches.rvp"
 bs4_parser = "html.parser"
 changelog_file = "changelog.md"
 changelog_json_file = "changelog.json"
@@ -54,6 +62,7 @@ apkmirror_scraper = cloudscraper.create_scraper()
 apkmirror_scraper.headers.update({"User-Agent": request_header["User-Agent"]})
 updates_file = "updates.json"
 updates_file_url = "https://raw.githubusercontent.com/{github_repository}/{branch_name}/{updates_file}"
+obtainium_source_url = "https://raw.githubusercontent.com/{github_repository}/{branch_name}/obtainium_sources/{file_name}"
 changelogs: dict[str, dict[str, str]] = {}
 time_zone = "Asia/Seoul"
 app_version_key = "app_version"
@@ -186,8 +195,9 @@ def slugify(string: str) -> str:
     # Replace spaces with dashes
     modified_string = re.sub(r"\s+", ".", modified_string)
 
-    # Remove consecutive dashes
+    # Collapse separator runs
     modified_string = re.sub(r"-+", ".", modified_string)
+    modified_string = re.sub(r"\.+", ".", modified_string)
 
     # Remove leading and trailing dashes
     return modified_string.strip(".")
@@ -195,26 +205,35 @@ def slugify(string: str) -> str:
 
 def _check_version(output: str) -> None:
     """Check version."""
-    if "Runtime Environment" not in output:
+    # Java version output differs by distribution, so parse the quoted version instead of matching vendor text.
+    version_match = re.search(r'version "(?P<major>\d+)(?:\.(?P<minor>\d+))?', output)
+    if not version_match:
         raise subprocess.CalledProcessError(-1, "java -version")
-    if "17" not in output and "20" not in output:
+    major_version = int(version_match.group("major"))
+    # Old Java reports versions as 1.x, so Java 8 appears as 1.8 and needs minor-version normalization.
+    if major_version == 1 and version_match.group("minor"):
+        major_version = int(version_match.group("minor"))
+    if major_version < minimum_java_major_version:
         raise subprocess.CalledProcessError(-1, "java -version")
 
 
 def check_java() -> None:
-    """The function `check_java` checks if Java version 17 or higher is installed.
+    """The function `check_java` checks if Java version 21 or higher is installed.
 
     Returns
     -------
         The function `check_java` does not return any value.
     """
     try:
+        # Retrieve installed Java runtime version details from shell output.
         jd = subprocess.check_output(["java", "-version"], stderr=subprocess.STDOUT).decode("utf-8")
         jd = jd[1:-1]
+        # Validate that installed Java version meets minimum required Java 21.
         _check_version(jd)
         logger.debug("Cool!! Java is available")
     except subprocess.CalledProcessError:
-        logger.error("Java>= 17 must be installed")
+        # Log error indicating Java 21+ requirement was not satisfied before exiting.
+        logger.error("Java>= 21 must be installed")
         sys.exit(-1)
 
 
@@ -276,5 +295,276 @@ def save_patch_info(app: "APP", updates_info: dict[str, Any]) -> dict[str, Any]:
         "ms_epoch_since_patched": datetime_to_ms_epoch(datetime.now(ZoneInfo(time_zone))),
         "date_patched": datetime.now(ZoneInfo(time_zone)),
         "app_dump": app.for_dump(),
+        "output_file_name": app.get_output_file_name(),
     }
     return updates_info
+
+
+def _obtainium_deep_link(
+    *,
+    package_name: str,
+    app_name: str,
+    author: str,
+    source_url: str,
+    config: "RevancedConfig",
+) -> str:
+    """Build an obtainium://app/... link that pre-fills an HTML source, so adding it is one tap."""
+    additional_settings = {
+        "trackOnly": False,
+        "versionExtractionRegEx": config.obtainium_version_extraction_regex,
+        "matchGroupToUse": config.obtainium_version_match_group,
+        "versionDetection": bool(config.obtainium_version_extraction_regex),
+        "apkFilterRegEx": "",
+        "invertAPKFilter": False,
+        "autoApkFilterByArch": True,
+        "appName": app_name,
+        "appAuthor": author,
+        "about": "",
+    }
+    app_config = {
+        "id": package_name,
+        "url": source_url,
+        "author": author,
+        "name": app_name,
+        "preferredApkIndex": 0,
+        "additionalSettings": json.dumps(additional_settings, separators=(",", ":")),
+        "overrideSource": "HTML",
+    }
+    # Compact separators keep the link shorter, matching what Obtainium itself produces.
+    # quote(..., safe="") never leaves a literal `"` in the output, so this is safe to drop straight into an href.
+    return "obtainium://app/" + quote(json.dumps(app_config, separators=(",", ":")), safe="")
+
+
+def _write_obtainium_index(cards: list[dict[str, str]]) -> None:
+    """Write a styled index page of one-click Obtainium "Add app" links.
+
+    Written to the repo root (not obtainium_sources/) because GitHub Pages' branch-deploy mode can only
+    serve from a branch's root or its /docs folder - never an arbitrary subfolder.
+    """
+    rows = "\n".join(
+        f"""        <li class="app-card">
+            <div class="app-header">
+                <span class="app-name">{card["name"]}</span>
+                <code class="package-name">{card["package_name"]}</code>
+            </div>
+            <div class="app-meta">
+                <span class="meta-chip">App {card["app_version"]}</span>
+                <span class="meta-chip">Patch {card["patch_version"]}</span>
+            </div>
+            <div class="app-actions">
+                <a class="add-button" href="{card["deep_link"]}">Add to Obtainium</a>
+                <a class="source-link" href="{card["source_url"]}">View source</a>
+            </div>
+        </li>"""
+        for card in cards
+    )
+    html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obtainium Sources</title>
+    <style>
+        :root {{
+            color-scheme: light dark;
+            --bg: #f5f6f8;
+            --card-bg: #ffffff;
+            --text: #1a1a1a;
+            --muted: #5f6368;
+            --accent: #2f6fed;
+            --accent-text: #ffffff;
+            --border: #e2e4e8;
+        }}
+        @media (prefers-color-scheme: dark) {{
+            :root {{
+                --bg: #16171a;
+                --card-bg: #212226;
+                --text: #f1f2f4;
+                --muted: #9aa0a6;
+                --accent: #6f9dff;
+                --accent-text: #0b0d10;
+                --border: #33353a;
+            }}
+        }}
+        * {{ box-sizing: border-box; }}
+        body {{
+            margin: 0;
+            padding: 2rem 1rem 3rem;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }}
+        main {{ max-width: 640px; margin: 0 auto; }}
+        h1 {{ font-size: 1.5rem; margin-bottom: 0.25rem; }}
+        p.intro {{ color: var(--muted); line-height: 1.5; margin-top: 0; }}
+        p.intro a {{ color: var(--accent); text-decoration: none; }}
+        p.intro a:hover {{ text-decoration: underline; }}
+        ul {{ list-style: none; padding: 0; margin: 1.5rem 0 0; display: flex; flex-direction: column; gap: 0.75rem; }}
+        .app-card {{
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.9rem 1.1rem;
+        }}
+        .app-header {{
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }}
+        .app-name {{ font-weight: 600; overflow-wrap: anywhere; }}
+        .package-name {{
+            font-size: 0.8rem;
+            color: var(--muted);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            overflow-wrap: anywhere;
+        }}
+        .app-meta {{ display: flex; flex-wrap: wrap; gap: 0.4rem; }}
+        .meta-chip {{
+            font-size: 0.78rem;
+            color: var(--muted);
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.15rem 0.6rem;
+            font-variant-numeric: tabular-nums;
+        }}
+        .app-actions {{ display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.2rem; }}
+        .add-button {{
+            flex-shrink: 0;
+            display: inline-block;
+            background: var(--accent);
+            color: var(--accent-text);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 0.5rem 0.9rem;
+            border-radius: 8px;
+            white-space: nowrap;
+        }}
+        .add-button:hover {{ opacity: 0.9; }}
+        .source-link {{
+            font-size: 0.85rem;
+            color: var(--muted);
+            text-decoration: none;
+        }}
+        .source-link:hover {{ color: var(--accent); text-decoration: underline; }}
+    </style>
+</head>
+<body>
+    <main>
+        <h1>Obtainium Sources</h1>
+        <p class="intro">
+            Tap a button below on an Android device with
+            <a href="https://github.com/ImranR98/Obtainium">Obtainium</a> installed to add that app as an update
+            source. Don't have it yet? Get it from the link above first.
+        </p>
+        <ul>
+{rows}
+        </ul>
+    </main>
+</body>
+</html>
+"""
+    index_path = Path("index.html")
+    index_path.write_text(html_content.strip(), encoding="utf_8")
+    logger.info(f"Generated Obtainium site index: {index_path}")
+
+
+def generate_obtainium_export(updates_info: dict[str, Any], config: "RevancedConfig") -> None:
+    """Generate HTML files for Obtainium."""
+    if not config.obtainium_export:
+        return
+
+    obtainium_sources_path = Path("obtainium_sources")
+    obtainium_sources_path.mkdir(exist_ok=True)
+
+    github_repository = config.env.str("GITHUB_REPOSITORY", "")
+    obtainium_github_tag = config.obtainium_github_tag
+    repo_owner = github_repository.split("/")[0] if github_repository else ""
+
+    if not github_repository:
+        logger.warning("GITHUB_REPOSITORY not set. Skipping Obtainium export.")
+        return
+
+    site_cards: list[dict[str, str]] = []
+
+    for app_name, app_data in updates_info.items():
+        if "output_file_name" not in app_data:
+            continue
+
+        # Release asset names are URL path segments, so encode them without allowing slash traversal.
+        output_file_name = str(app_data["output_file_name"])
+        encoded_output_file_name = quote(output_file_name, safe="")
+        # Tags are also path segments, and custom tags may contain characters that need encoding.
+        encoded_obtainium_github_tag = quote(obtainium_github_tag, safe="")
+
+        # Construct the same public release URL shape GitHub serves for release assets.
+        if obtainium_github_tag == "latest":
+            # Latest release URLs let the generated HTML survive timestamp-based release tags.
+            download_url = f"https://github.com/{github_repository}/releases/latest/download/{encoded_output_file_name}"
+        else:
+            # Fixed tag URLs are available for users who keep a stable release tag outside the default workflow.
+            download_url = (
+                f"https://github.com/{github_repository}/releases/download/"
+                f"{encoded_obtainium_github_tag}/{encoded_output_file_name}"
+            )
+
+        # The HTML source hashes the APK link by default, so this label is informational for users.
+        display_version = html.escape(str(app_data.get(app_version_key, "unknown")))
+        # App names may come from env configuration, so escape text and slug filenames before writing HTML.
+        display_app_name = html.escape(str(app_name))
+        html_file_name = f"{slugify(str(app_name)) or 'app'}.html"
+        html_content = f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{display_app_name}</title>
+</head>
+<body>
+    <h1>{display_app_name}</h1>
+    <p>Latest version: {display_version}</p>
+    <a href="{download_url}">Download APK</a>
+</body>
+</html>
+"""
+        # Each app gets one HTML source page so users can subscribe to only the apps they patch.
+        html_file_path = obtainium_sources_path / html_file_name
+        html_file_path.write_text(html_content.strip(), encoding="utf_8")
+        logger.info(f"Generated Obtainium export for {app_name}: {html_file_path}")
+
+        if config.obtainium_site_export:
+            package_name = str(app_data["app_dump"].get("package_name", ""))
+            if not package_name:
+                logger.warning(f"No package_name for {app_name}. Skipping its Obtainium deep link.")
+            else:
+                source_url = obtainium_source_url.format(
+                    github_repository=github_repository, branch_name=branch_name, file_name=html_file_name,
+                )
+                deep_link = _obtainium_deep_link(
+                    package_name=package_name,
+                    app_name=str(app_name),
+                    author=repo_owner,
+                    source_url=source_url,
+                    config=config,
+                )
+                patch_versions = ", ".join(str(v) for v in app_data.get(patches_versions_key, [])) or "unknown"
+                site_cards.append(
+                    {
+                        "name": display_app_name,
+                        "package_name": html.escape(package_name),
+                        "app_version": display_version,
+                        "patch_version": html.escape(patch_versions),
+                        "deep_link": deep_link,
+                        "source_url": html.escape(source_url),
+                    },
+                )
+
+    if config.obtainium_site_export and site_cards:
+        _write_obtainium_index(site_cards)
